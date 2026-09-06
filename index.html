@@ -246,8 +246,9 @@ h1{font-family:"Press Start 2P","Courier New",monospace;font-size:20px;letter-sp
   var pauseBtnTouch=document.getElementById("pauseBtnTouch");
 
   /* ---------- 音频 / 音量 ---------- */
-  var audioCtx=null, sfxGain=null;
+  var audioCtx=null, musicGain=null, sfxGain=null;
   var musicOn=true, musicVolume=0.6, sfxVolume=0.8;
+  var musicBuffer=null, musicSource=null, musicLoaded=false, musicFallback=false;
 
   /* ---------- 旋转矩阵 ---------- */
   function rotateCW(m){
@@ -346,9 +347,13 @@ h1{font-family:"Press Start 2P","Courier New",monospace;font-size:20px;letter-sp
       try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
       catch(e){ audioCtx = null; }
       if(audioCtx){
+        musicGain=audioCtx.createGain();
         sfxGain=audioCtx.createGain();
+        musicGain.connect(audioCtx.destination);
         sfxGain.connect(audioCtx.destination);
+        setMusicVolume(musicVolume);
         setSfxVolume(sfxVolume);
+        loadMusicBuffer();
       }
     }
     if(audioCtx && audioCtx.state === "suspended"){ audioCtx.resume(); }
@@ -356,6 +361,7 @@ h1{font-family:"Press Start 2P","Courier New",monospace;font-size:20px;letter-sp
   }
   function setMusicVolume(v){
     musicVolume=Math.max(0,Math.min(1,v));
+    if(musicGain) musicGain.gain.value=musicVolume;
     var bgm=document.getElementById("bgm");
     if(bgm) bgm.volume=musicVolume;
     if(musicVolVal) musicVolVal.textContent=String(Math.round(musicVolume*100));
@@ -365,13 +371,36 @@ h1{font-family:"Press Start 2P","Courier New",monospace;font-size:20px;letter-sp
     if(sfxGain) sfxGain.gain.value=sfxVolume;
     if(sfxVolVal) sfxVolVal.textContent=String(Math.round(sfxVolume*100));
   }
-  function musicPlay(){
+  function loadMusicBuffer(){
+    if(musicBuffer || musicFallback || !audioCtx) return;
+    fetch("bgm.wav").then(function(r){ if(!r.ok) throw new Error("http"); return r.arrayBuffer(); })
+      .then(function(ab){ return audioCtx.decodeAudioData(ab); })
+      .then(function(dec){ musicBuffer=dec; musicLoaded=true; if(running && musicOn && !paused) startMusicLoop(); })
+      .catch(function(){ musicFallback=true; if(running && musicOn && !paused) playAudioFallback(); });
+  }
+  function startMusicLoop(){
+    stopMusicLoop();
+    if(!audioCtx || !musicBuffer) return;
+    var src=audioCtx.createBufferSource();
+    src.buffer=musicBuffer;
+    src.loop=true;
+    src.connect(musicGain);
+    src.start();
+    musicSource=src;
+  }
+  function stopMusicLoop(){
+    if(musicSource){ try{ musicSource.stop(); }catch(e){} musicSource=null; }
+  }
+  function playAudioFallback(){
     var bgm=document.getElementById("bgm");
-    if(bgm && musicOn){
-      try{ bgm.volume=musicVolume; bgm.play(); }catch(e){}
-    }
+    if(bgm){ try{ bgm.volume=musicVolume; bgm.play(); }catch(e){} }
+  }
+  function musicPlay(){
+    if(musicLoaded){ startMusicLoop(); return; }
+    if(musicFallback){ playAudioFallback(); return; }
   }
   function musicPause(){
+    stopMusicLoop();
     var bgm=document.getElementById("bgm");
     if(bgm){ try{ bgm.pause(); }catch(e){} }
   }
