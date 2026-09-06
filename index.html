@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TETRIS">
+<meta name="theme-color" content="#070a12">
+<title>TETRIS</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100vh;
+  background:radial-gradient(1000px 700px at 50% -10%, #17233f 0%, #070a12 60%);
+  color:#e8eef7;
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+  padding:14px;
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  padding-left:max(14px, env(safe-area-inset-left));
+  padding-right:max(14px, env(safe-area-inset-right));
+}
+.cabinet{
+  width:100%;
+  max-width:580px;
+  background:linear-gradient(180deg,#111a2b 0%, #0a101d 100%);
+  border:2px solid #1f2d48;
+  border-radius:20px;
+  box-shadow:0 0 0 3px #06090f, 0 0 26px rgba(55,240,208,.16), inset 0 0 0 1px #16233a;
+  padding:14px;
+}
+.topBar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-family:"Press Start 2P","Courier New",monospace;font-size:20px;letter-spacing:1px;margin:0;color:#37f0d0;font-weight:400;text-shadow:0 0 12px rgba(55,240,208,.75)}
+.tag{font-family:"Press Start 2P",monospace;font-size:8px;color:#ff4fa0;text-shadow:0 0 8px rgba(255,79,160,.6);letter-spacing:1px}
+.playArea{display:flex;gap:12px;align-items:stretch}
+.boardWrap{position:relative;width:300px;flex:none}
+#board{display:block;width:300px;height:600px;background:#0b101d;border:2px solid #26364f;border-radius:10px;box-shadow:inset 0 0 0 1px #060a12, 0 0 14px rgba(55,240,208,.12);image-rendering:pixelated}
+.overlay{position:absolute;left:0;top:0;right:0;bottom:0;border-radius:10px;background:rgba(6,9,16,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px;z-index:5;cursor:pointer}
+.overlay.hidden{display:none}
+.ovBig{font-family:"Press Start 2P",monospace;font-size:20px;letter-spacing:2px;color:#37f0d0;text-shadow:0 0 10px rgba(55,240,208,.6)}
+.ovSmall{font-size:12px;color:#9fb0c6;line-height:1.8}
+.sidePanel{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:10px}
+.panel{background:#0e1626;border:2px solid #22314a;border-radius:12px;padding:10px}
+.ph{font-family:"Press Start 2P",monospace;font-size:8px;color:#7d8ba6;letter-spacing:1px;margin-bottom:9px}
+.stat{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:12px;color:#b9c6da}
+.stat b{color:#fff;font-size:13px;font-variant-numeric:tabular-nums}
+.slot{display:flex;flex-direction:column;gap:4px;align-items:center;margin:6px 0}
+.slot .lab{font-size:10px;color:#7d8ba6;letter-spacing:1px}
+#holdCanvas,#next{display:block;background:#0b101d;border-radius:6px;width:120px;height:44px;image-rendering:pixelated}
+.controlsBar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+.dpad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);gap:3px}
+.dbtn{background:#172238;border:2px solid #2c3f60;border-radius:9px;color:#9fd8ff;font-size:15px;line-height:1;touch-action:none;box-shadow:0 3px 0 #0a111f;cursor:pointer}
+.dbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #0a111f;background:#20314f}
+.dbtn.up{grid-column:2;grid-row:1}
+.dbtn.left{grid-column:1;grid-row:2}
+.dbtn.right{grid-column:3;grid-row:2}
+.dbtn.down{grid-column:2;grid-row:3}
+.ab{display:flex;gap:10px;align-items:center}
+.abtn{width:56px;height:56px;border-radius:50%;font-family:"Press Start 2P",monospace;font-size:14px;line-height:1;touch-action:none;cursor:pointer}
+.abtn.a{background:radial-gradient(circle at 35% 30%, #d92f52, #7e1730);border:2px solid #ff4fa0;color:#fff;box-shadow:0 0 12px rgba(255,79,160,.55), 0 4px 0 #4a0d1e}
+.abtn.a:active{transform:translateY(3px);box-shadow:0 1px 0 #4a0d1e}
+.abtn.b{background:radial-gradient(circle at 35% 30%, #2456c7, #122b66);border:2px solid #37f0d0;color:#fff;box-shadow:0 0 12px rgba(55,240,208,.45), 0 4px 0 #0b1b40}
+.abtn.b:active{transform:translateY(3px);box-shadow:0 1px 0 #0b1b40}
+.pauseBtn{width:52px;height:52px;border-radius:12px;background:#2a1d3a;border:2px solid #ff4fa0;color:#ffc2dd;font-size:18px;line-height:1;touch-action:none;box-shadow:0 0 10px rgba(255,79,160,.35), 0 3px 0 #150c1f;cursor:pointer}
+.pauseBtn:active{transform:translateY(2px)}
+.sidePause{width:100%;height:46px;border-radius:12px;background:#2a1d3a;border:2px solid #ff4fa0;color:#ffc2dd;font-size:14px;touch-action:none;box-shadow:0 0 10px rgba(255,79,160,.3),0 3px 0 #150c1f;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.sidePause:active{transform:translateY(2px)}
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(4,7,12,.7);display:flex;align-items:center;justify-content:center;z-index:30;padding:20px}
+.modal.hidden{display:none}
+.modalCard{background:#101a2b;border:2px solid #26364f;border-radius:16px;padding:18px;width:min(330px,92vw);display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.55), 0 0 20px rgba(55,240,208,.12)}
+.modalTitle{font-family:"Press Start 2P",monospace;font-size:14px;color:#37f0d0;text-align:center;letter-spacing:2px}
+.modal .row{display:flex;align-items:center;gap:10px;font-size:12px;color:#b9c6da}
+.modal .row>span{width:68px;flex:none}
+.modal input[type=range]{flex:1;accent-color:#37f0d0}
+.modal b{width:34px;text-align:right;color:#fff;font-variant-numeric:tabular-nums}
+.modalCard button{font-family:"Press Start 2P",monospace;font-size:11px;padding:12px;border-radius:10px;background:#172238;border:2px solid #2c3f60;color:#e8eef7;cursor:pointer;letter-spacing:1px}
+.modalCard button:hover{background:#20314f}
+.modalCard button.primary{background:#0f7d69;border-color:#18a98f}
+.keysInfo{background:#0b1322;border:2px solid #1d2a42;border-radius:10px;padding:10px;font-size:11px;line-height:1.9;color:#b9c6da}
+.krow{display:flex;justify-content:space-between;gap:10px}
+.krow span{color:#37f0d0;font-family:"Press Start 2P",monospace;font-size:9px;min-width:56px}
+.krow b{color:#dce6f5;font-weight:600}
+.kdivider{border-top:1px dashed #22314a;margin:8px 0}
+@media (max-width:560px){
+  .boardWrap{width:216px}
+  #board{width:216px;height:432px}
+  .slot canvas{width:100%;height:auto}
+  .dpad{grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px)}
+  .abtn{width:50px;height:50px;font-size:12px}
+  .pauseBtn{width:46px;height:46px}
+}
+@media (max-width:380px){
+  .boardWrap{width:190px}
+  #board{width:190px;height:380px}
+}
+</style>
+</head>
+<body>
+<audio id="bgm" src="bgm.wav" loop preload="auto"></audio>
+
+<div class="cabinet">
+  <div class="topBar">
+    <h1>TETRIS</h1>
+    <div class="tag">RETRO</div>
+  </div>
+
+  <div class="playArea">
+    <div class="boardWrap">
+      <canvas id="board" width="280" height="560"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="ovBig" id="ovBig">TETRIS</div>
+        <div class="ovSmall" id="ovSmall">点击开始游戏</div>
+      </div>
+    </div>
+
+    <aside class="sidePanel">
+      <div class="panel">
+        <div class="ph">分数</div>
+        <div class="stat"><span>得分</span><b id="score">0</b></div>
+        <div class="stat"><span>行数</span><b id="lines">0</b></div>
+        <div class="stat"><span>速度</span><b id="speed">0.50</b></div>
+        <div class="stat"><span>最高</span><b id="best">0</b></div>
+      </div>
+      <div class="panel">
+        <div class="ph">方块</div>
+        <div class="slot">
+          <span class="lab">存放</span>
+          <canvas id="holdCanvas" width="120" height="44"></canvas>
+        </div>
+        <div class="slot">
+          <span class="lab">下一个</span>
+          <canvas id="next" width="120" height="44"></canvas>
+        </div>
+      </div>
+      <button class="pauseBtn sidePause" id="pauseBtnTouch" title="暂停">⏸ 暂停</button>
+    </aside>
+  </div>
+
+  <div class="controlsBar">
+    <div class="dpad">
+      <button class="dbtn up" data-act="hard">▲</button>
+      <button class="dbtn left" data-act="left">◀</button>
+      <button class="dbtn right" data-act="right">▶</button>
+      <button class="dbtn down" data-act="soft">▼</button>
+    </div>
+    <div class="ab">
+      <button class="abtn a" data-act="rotate">A</button>
+      <button class="abtn b" data-act="hold">B</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal hidden" id="pauseMenu">
+  <div class="modalCard">
+    <div class="modalTitle">已暂停</div>
+    <button class="primary" id="resumeBtn">继续</button>
+    <button id="settingsFromPauseBtn">设置</button>
+  </div>
+</div>
+
+<div class="modal hidden" id="settingsModal">
+  <div class="modalCard">
+    <div class="modalTitle">设置</div>
+    <label class="row"><span>音乐音量</span><input type="range" id="musicVol" min="0" max="100" value="60"><b id="musicVolVal">60</b></label>
+    <label class="row"><span>音效音量</span><input type="range" id="sfxVol" min="0" max="100" value="80"><b id="sfxVolVal">80</b></label>
+    <div class="keysInfo">
+      <div class="krow"><span>A</span><b>旋转</b></div>
+      <div class="krow"><span>B</span><b>存放</b></div>
+      <div class="krow"><span>↑</span><b>一键落下</b></div>
+      <div class="krow"><span>↓</span><b>加速落下</b></div>
+      <div class="krow"><span>← →</span><b>左右移动</b></div>
+      <div class="kdivider"></div>
+      <div class="krow"><span>空格</span><b>落底</b></div>
+      <div class="krow"><span>P</span><b>暂停</b></div>
+      <div class="krow"><span>R</span><b>重新开始</b></div>
+    </div>
+    <button id="closeSettings">关闭</button>
+  </div>
+</div>
+<script>
+"use strict";
+(function(){
+  /* ============ 难度配置 ============ */
+  var COLS=10, ROWS=20, CELL=28;
+  var BASE_DROP_MS=500;
+  var STEP_MS=100;
+  var LINES_PER_LEVEL=15;
+  var MIN_DROP_MS=150;   // 最快封顶 0.15 秒/格
+  var SOFT_MS=38;
+  var DAS_DELAY=140, DAS_REPEAT=45;
+  var LINE_POINTS=[0,100,300,500,800];
+  var FLASH_MS=70;
+
+  var COLORS={I:"#2ed3d8",O:"#f7d51e",T:"#a06be0",S:"#4ccf6b",Z:"#f2564f",J:"#4d7cfe",L:"#ffa04d"};
+  var SHAPES={
+    I:["....","####","....","...."],
+    O:["##","##"],
+    T:[".#.","###","..."],
+    S:[".##","##.","..."],
+    Z:["##.",".##","..."],
+    J:["#..","###","..."],
+    L:["..#","###","..."]
+  };
+  var TYPES=["I","O","T","S","Z","J","L"];
+  var BAG=[];
+  var board=[], piece=null, pending=null, hold=null, holdUsed=false;
+  var score=0, lines=0, best=0;
+  var running=false, paused=false, over=false;
+  var loopId=null, softId=null, dasTimer=null, dasDir=0;
+  var flashRows=[], flashStart=0, flashId=null;
+
+  /* ---------- DOM ---------- */
+  var canvas=document.getElementById("board");
+  var ctx=canvas.getContext("2d");
+  var nextCanvas=document.getElementById("next");
+  var nctx=nextCanvas.getContext("2d");
+  var holdCanvas=document.getElementById("holdCanvas");
+  var hctx=holdCanvas.getContext("2d");
+  var scoreEl=document.getElementById("score");
+  var linesEl=document.getElementById("lines");
+  var speedEl=document.getElementById("speed");
+  var bestEl=document.getElementById("best");
+  var overlay=document.getElementById("overlay");
+  var ovBig=document.getElementById("ovBig");
+  var ovSmall=document.getElementById("ovSmall");
+  var settingsModal=document.getElementById("settingsModal");
+  var musicVolEl=document.getElementById("musicVol");
+  var sfxVolEl=document.getElementById("sfxVol");
+  var musicVolVal=document.getElementById("musicVolVal");
+  var sfxVolVal=document.getElementById("sfxVolVal");
+  var closeSettingsBtn=document.getElementById("closeSettings");
+  var pauseMenu=document.getElementById("pauseMenu");
+  var resumeBtn=document.getElementById("resumeBtn");
+  var settingsFromPauseBtn=document.getElementById("settingsFromPauseBtn");
+  var pauseBtnTouch=document.getElementById("pauseBtnTouch");
+
+  /* ---------- 音频 / 音量 ---------- */
+  var audioCtx=null, sfxGain=null;
+  var musicOn=true, musicVolume=0.6, sfxVolume=0.8;
+
+  /* ---------- 旋转矩阵 ---------- */
+  function rotateCW(m){
+    var n=m.length, out=[];
+    for(var i=0;i<n;i++){ out.push([]); for(var j=0;j<n;j++) out[i].push("."); }
+    for(var r=0;r<n;r++) for(var c=0;c<n;c++) out[c][n-1-r]=m[r][c];
+    return out.map(function(row){ return row.join(""); });
+  }
+  var ROT={};
+  TYPES.forEach(function(t){
+    var list=[SHAPES[t]], cur=SHAPES[t];
+    for(var k=0;k<3;k++){
+      cur=rotateCW(cur);
+      var dup=false;
+      for(var i=0;i<list.length;i++) if(list[i].join("|")===cur.join("|")){ dup=true; break; }
+      if(dup) break;
+      list.push(cur);
+    }
+    ROT[t]=list;
+  });
+
+  /* ---------- 七袋随机 ---------- */
+  function refillBag(){
+    BAG=TYPES.slice();
+    for(var i=BAG.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var tmp=BAG[i]; BAG[i]=BAG[j]; BAG[j]=tmp;
+    }
+  }
+  function takeType(){ if(!BAG.length) refillBag(); return BAG.pop(); }
+
+  /* ---------- 基础 ---------- */
+  function filledCells(p){
+    var m=ROT[p.type][p.rot], cells=[];
+    for(var r=0;r<m.length;r++)
+      for(var c=0;c<m[r].length;c++)
+        if(m[r][c]==="#") cells.push({x:p.x+c,y:p.y+r});
+    return cells;
+  }
+  function collides(p){
+    var cells=filledCells(p);
+    for(var i=0;i<cells.length;i++){
+      var x=cells[i].x, y=cells[i].y;
+      if(x<0||x>=COLS||y>=ROWS) return true;
+      if(y>=0&&board[y][x]!==null) return true;
+    }
+    return false;
+  }
+  function makePiece(type){
+    var m=ROT[type][0];
+    var top=-1, left=99, right=-1;
+    for(var r=0;r<m.length;r++){
+      var lo=m[r].indexOf("#"), hi=m[r].lastIndexOf("#");
+      if(lo>=0){ if(top<0) top=r; if(lo<left) left=lo; if(hi>right) right=hi; }
+    }
+    var w=right-left+1;
+    return {type:type, rot:0, x:Math.floor((COLS-w)/2)-left, y:-top};
+  }
+  function resetBoard(){
+    board=[];
+    for(var r=0;r<ROWS;r++) board.push(new Array(COLS).fill(null));
+  }
+
+  /* ---------- 难度 / 速度 ---------- */
+  function currentDropMs(){
+    var lvl=Math.floor(lines/LINES_PER_LEVEL);
+    return Math.max(MIN_DROP_MS, BASE_DROP_MS - lvl*STEP_MS);
+  }
+  function refreshSpeed(){
+    speedEl.textContent=(currentDropMs()/1000).toFixed(2);
+  }
+
+  /* ---------- 分数 / 循环 ---------- */
+  function addScore(d){
+    score+=d;
+    if(score>best) best=score;
+    scoreEl.textContent=score;
+    bestEl.textContent=Math.max(best,score);
+  }
+  function startLoop(){
+    if(loopId) clearInterval(loopId);
+    loopId=setInterval(stepGravity, currentDropMs());
+  }
+  function stopTimers(){
+    if(loopId){ clearInterval(loopId); loopId=null; }
+    if(softId){ clearInterval(softId); softId=null; }
+    if(dasTimer){ clearTimeout(dasTimer); dasTimer=null; }
+    if(flashId){ cancelAnimationFrame(flashId); flashId=null; }
+    flashRows=[];
+    dasDir=0;
+  }
+
+  /* ---------- 音频实现 ---------- */
+  function ensureAudio(){
+    if(!audioCtx){
+      try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ audioCtx = null; }
+      if(audioCtx){
+        sfxGain=audioCtx.createGain();
+        sfxGain.connect(audioCtx.destination);
+        setSfxVolume(sfxVolume);
+      }
+    }
+    if(audioCtx && audioCtx.state === "suspended"){ audioCtx.resume(); }
+    return audioCtx;
+  }
+  function setMusicVolume(v){
+    musicVolume=Math.max(0,Math.min(1,v));
+    var bgm=document.getElementById("bgm");
+    if(bgm) bgm.volume=musicVolume;
+    if(musicVolVal) musicVolVal.textContent=String(Math.round(musicVolume*100));
+  }
+  function setSfxVolume(v){
+    sfxVolume=Math.max(0,Math.min(1,v));
+    if(sfxGain) sfxGain.gain.value=sfxVolume;
+    if(sfxVolVal) sfxVolVal.textContent=String(Math.round(sfxVolume*100));
+  }
+  function musicPlay(){
+    var bgm=document.getElementById("bgm");
+    if(bgm && musicOn){
+      try{ bgm.volume=musicVolume; bgm.play(); }catch(e){}
+    }
+  }
+  function musicPause(){
+    var bgm=document.getElementById("bgm");
+    if(bgm){ try{ bgm.pause(); }catch(e){} }
+  }
+  function playClearSfx(){
+    if(!audioCtx || !sfxGain) return;
+    var t=audioCtx.currentTime, notes=[660,880,990];
+    for(var i=0;i<notes.length;i++){
+      var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type="square"; o.frequency.value=notes[i];
+      var w=t+i*0.055;
+      g.gain.setValueAtTime(0.0001,w);
+      g.gain.exponentialRampToValueAtTime(0.5,w+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,w+0.14);
+      o.connect(g); g.connect(sfxGain);
+      o.start(w); o.stop(w+0.16);
+    }
+  }
+  function playOverSfx(){
+    if(!audioCtx || !sfxGain) return;
+    var t=audioCtx.currentTime, notes=[440,330,262];
+    for(var i=0;i<notes.length;i++){
+      var o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type="triangle"; o.frequency.value=notes[i];
+      var w=t+i*0.09;
+      g.gain.setValueAtTime(0.0001,w);
+      g.gain.exponentialRampToValueAtTime(0.35,w+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,w+0.18);
+      o.connect(g); g.connect(sfxGain);
+      o.start(w); o.stop(w+0.2);
+    }
+  }
+
+  /* ---------- 游戏流程 ---------- */
+  function spawnFromPending(){
+    holdUsed=false;
+    piece=makePiece(pending);
+    pending=takeType();
+    if(collides(piece)){ piece=null; gameOver(); return; }
+    startLoop();
+    render();
+  }
+  function gameOver(){
+    over=true; running=false; paused=false;
+    hold=null; holdUsed=false;
+    stopTimers();
+    musicPause();
+    playOverSfx();
+    closePauseMenu();
+    if(score>best){ best=score;
+      try{ localStorage.setItem("tetris_best", String(best)); }catch(e){}
+    }
+    syncHud(); render();
+  }
+  function newGame(){
+    stopTimers();
+    resetBoard();
+    score=0; lines=0;
+    over=false; paused=false; running=true;
+    hold=null; holdUsed=false;
+    BAG=[]; pending=takeType(); piece=null;
+    closePauseMenu();
+    ensureAudio();
+    musicPlay();
+    spawnFromPending();
+    syncHud();
+  }
+
+  /* ---------- 移动 / 旋转 / 锁定 ---------- */
+  function move(dx,dy){
+    if(!piece||!running||paused||over) return false;
+    piece.x+=dx; piece.y+=dy;
+    if(collides(piece)){ piece.x-=dx; piece.y-=dy; return false; }
+    return true;
+  }
+  function rotate(dir){
+    if(!piece||!running||paused||over) return;
+    var list=ROT[piece.type], n=list.length;
+    var next=(piece.rot+dir+n)%n, orig=piece.rot;
+    piece.rot=next;
+    if(!collides(piece)){ render(); return; }
+    var kicks=[1,-1,2,-2];
+    for(var i=0;i<kicks.length;i++){
+      piece.x+=kicks[i];
+      if(!collides(piece)){ render(); return; }
+      piece.x-=kicks[i];
+    }
+    piece.rot=orig;
+    render();
+  }
+  function softStep(){
+    if(!running||paused||over||!piece) return;
+    if(move(0,1)){ addScore(1); render(); }
+    else lockPiece();
+  }
+  function hardDrop(){
+    if(!running||paused||over||!piece) return;
+    var dist=0;
+    while(move(0,1)) dist++;
+    addScore(dist*2);
+    lockPiece();
+  }
+  function holdPiece(){
+    if(!piece||!running||paused||over||holdUsed) return;
+    holdUsed=true;
+    if(hold===null){
+      hold=piece.type;
+      piece=makePiece(pending);
+      pending=takeType();
+    }else{
+      var t=hold;
+      hold=piece.type;
+      piece=makePiece(t);
+    }
+    if(collides(piece)){ piece=null; gameOver(); return; }
+    startLoop();
+    render();
+  }
+  function lockPiece(){
+    if(!piece) return;
+    var cells=filledCells(piece);
+    for(var i=0;i<cells.length;i++){
+      var c=cells[i];
+      if(c.y>=0&&c.y<ROWS&&c.x>=0&&c.x<COLS) board[c.y][c.x]=piece.type;
+    }
+    piece=null;
+    var fullRows=[];
+    for(var r=ROWS-1;r>=0;r--){
+      var full=true;
+      for(var c2=0;c2<COLS;c2++) if(board[r][c2]===null){ full=false; break; }
+      if(full) fullRows.push(r);
+    }
+    if(fullRows.length){
+      fullRows.sort(function(a,b){ return a-b; });
+      for(var k=fullRows.length-1;k>=0;k--){
+        board.splice(fullRows[k],1);
+        board.unshift(new Array(COLS).fill(null));
+      }
+      var n=fullRows.length;
+      lines+=n;
+      linesEl.textContent=lines;
+      refreshSpeed();
+      addScore(LINE_POINTS[n]);
+      playClearSfx();
+      flashRows=fullRows.slice();
+      flashStart=Date.now();
+      startFlash();
+      spawnFromPending();
+    }else{
+      spawnFromPending();
+    }
+  }
+  function startFlash(){
+    if(flashId) cancelAnimationFrame(flashId);
+    function tick(){
+      if(!flashRows.length || Date.now()-flashStart >= FLASH_MS){
+        flashRows=[]; flashId=null; render(); return;
+      }
+      render();
+      flashId=requestAnimationFrame(tick);
+    }
+    flashId=requestAnimationFrame(tick);
+  }
+  function stepGravity(){
+    if(!running||paused||over) return;
+    if(move(0,1)){ render(); } else { lockPiece(); }
+  }
+
+  /* ---------- 暂停 / 菜单 ---------- */
+  function pauseGame(){
+    if(!running||over) return;
+    paused=true;
+    stopTimers();
+    musicPause();
+    syncHud();
+  }
+  function resume(){
+    if(!running||over) return;
+    paused=false;
+    startLoop();
+    musicPlay();
+    syncHud();
+  }
+  function openPauseMenu(){ pauseMenu.classList.remove("hidden"); }
+  function closePauseMenu(){ pauseMenu.classList.add("hidden"); }
+  function togglePause(){
+    if(paused){ resume(); closePauseMenu(); }
+    else if(running && !over){ pauseGame(); openPauseMenu(); }
+  }
+  function openSettings(){ ensureAudio(); settingsModal.classList.remove("hidden"); }
+  function closeSettings(){
+    settingsModal.classList.add("hidden");
+    if(paused) openPauseMenu();
+  }
+
+  /* ---------- 长按 DAS / 软降 ---------- */
+  function startDas(dir){
+    if(dasTimer){ clearTimeout(dasTimer); dasTimer=null; }
+    dasDir=dir;
+    move(dir,0);
+    render();
+    dasTimer=setTimeout(function tick(){
+      if(dasDir!==dir){ return; }
+      move(dir,0);
+      render();
+      dasTimer=setTimeout(tick,DAS_REPEAT);
+    },DAS_DELAY);
+  }
+  function stopDas(){ if(dasTimer){ clearTimeout(dasTimer); dasTimer=null; } dasDir=0; }
+  function startSoft(){
+    if(softId){ clearInterval(softId); softId=null; }
+    softStep();
+    softId=setInterval(softStep,SOFT_MS);
+  }
+  function stopSoft(){ if(softId){ clearInterval(softId); softId=null; } }
+
+  /* ---------- 键盘 ---------- */
+  function onKeyDown(e){
+    var code=e.code;
+    if(e.altKey||e.ctrlKey||e.metaKey) return;
+    if(code==="ArrowLeft"||code==="ArrowRight"||code==="ArrowDown"||code==="ArrowUp"||code==="Space") e.preventDefault();
+
+    if(code==="KeyR"){ newGame(); return; }
+    if(code==="Enter"){
+      if(!running||over) newGame();
+      else if(paused) resume();
+      return;
+    }
+    if(!running||over) return;
+
+    if(code==="KeyP"||code==="Escape"){ if(!e.repeat) togglePause(); return; }
+    if(paused) return;
+
+    if(code==="ArrowLeft"){ if(!e.repeat&&dasDir!==-1) startDas(-1); }
+    else if(code==="ArrowRight"){ if(!e.repeat&&dasDir!==1) startDas(1); }
+    else if(code==="ArrowDown"){ if(!e.repeat&&softId===null) startSoft(); }
+    else if(code==="ArrowUp"||code==="KeyX"){ if(!e.repeat) rotate(1); }
+    else if(code==="KeyZ"){ if(!e.repeat) rotate(-1); }
+    else if(code==="KeyC"){ if(!e.repeat) holdPiece(); }
+    else if(code==="Space"){ if(!e.repeat) hardDrop(); }
+  }
+  function onKeyUp(e){
+    var code=e.code;
+    if(code==="ArrowLeft"||code==="ArrowRight") stopDas();
+    else if(code==="ArrowDown") stopSoft();
+  }
+
+  /* ---------- 绘制 ---------- */
+  function drawBlock(type,x,y,alpha){
+    var px=x*CELL, py=y*CELL;
+    ctx.globalAlpha=(alpha===undefined)?1:alpha;
+    ctx.fillStyle=COLORS[type];
+    ctx.fillRect(px+1,py+1,CELL-2,CELL-2);
+    ctx.fillStyle="rgba(255,255,255,0.16)";
+    ctx.fillRect(px+1,py+1,CELL-2,5);
+    ctx.globalAlpha=1;
+  }
+  function drawBoard(){
+    var W=COLS*CELL, H=ROWS*CELL;
+    ctx.fillStyle="#0d1320";
+    ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle="rgba(255,255,255,0.04)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    for(var x=1;x<COLS;x++){ ctx.moveTo(x*CELL+0.5,0); ctx.lineTo(x*CELL+0.5,H); }
+    for(var y=1;y<ROWS;y++){ ctx.moveTo(0,y*CELL+0.5); ctx.lineTo(W,y*CELL+0.5); }
+    ctx.stroke();
+
+    for(var r=0;r<ROWS;r++)
+      for(var c=0;c<COLS;c++)
+        if(board[r][c]) drawBlock(board[r][c],c,r);
+
+    if(flashRows.length){
+      var fp=Math.min(1,(Date.now()-flashStart)/FLASH_MS);
+      if(fp>=1){ flashRows=[]; }
+      else{
+        var fa=0.7*(1-fp);
+        ctx.fillStyle="rgba(255,255,255,"+fa.toFixed(3)+")";
+        for(var fi=0;fi<flashRows.length;fi++){
+          ctx.fillRect(0, flashRows[fi]*CELL, W, CELL);
+        }
+      }
+    }
+
+    if(piece){
+      var g={type:piece.type,x:piece.x,y:piece.y,rot:piece.rot};
+      while(!collides({type:g.type,x:g.x,y:g.y+1,rot:g.rot})) g.y++;
+      if(g.y>piece.y){
+        var gcells=filledCells(g);
+        for(var i=0;i<gcells.length;i++){
+          var gc=gcells[i];
+          if(gc.y<0) continue;
+          ctx.globalAlpha=0.15;
+          ctx.fillStyle=COLORS[piece.type];
+          ctx.fillRect(gc.x*CELL+1,gc.y*CELL+1,CELL-2,CELL-2);
+          ctx.globalAlpha=0.75;
+          ctx.strokeStyle=COLORS[piece.type];
+          ctx.lineWidth=1;
+          ctx.strokeRect(gc.x*CELL+1.5,gc.y*CELL+1.5,CELL-3,CELL-3);
+          ctx.globalAlpha=1;
+        }
+      }
+      var cells=filledCells(piece);
+      for(var j=0;j<cells.length;j++){
+        var pc=cells[j];
+        if(pc.y>=0) drawBlock(piece.type,pc.x,pc.y);
+      }
+    }
+  }
+  function drawPreview(ctx2d, type){
+    var w=120, h=44;
+    ctx2d.clearRect(0,0,w,h);
+    if(!type) return;
+    var m=ROT[type][0];
+    var cells=[];
+    for(var r=0;r<m.length;r++) for(var c=0;c<m[r].length;c++)
+      if(m[r][c]==="#") cells.push({x:c,y:r});
+    var minX=99,maxX=-1,minY=99,maxY=-1;
+    for(var i=0;i<cells.length;i++){
+      if(cells[i].x<minX)minX=cells[i].x;
+      if(cells[i].x>maxX)maxX=cells[i].x;
+      if(cells[i].y<minY)minY=cells[i].y;
+      if(cells[i].y>maxY)maxY=cells[i].y;
+    }
+    var bw=maxX-minX+1, bh=maxY-minY+1;
+    var cell=Math.min(110/Math.max(1,bw), 40/Math.max(1,bh), 26);
+    var ox=(w-bw*cell)/2, oy=(h-bh*cell)/2;
+    ctx2d.fillStyle=COLORS[type];
+    for(var j=0;j<cells.length;j++){
+      ctx2d.fillRect(ox+(cells[j].x-minX)*cell+1, oy+(cells[j].y-minY)*cell+1, cell-2, cell-2);
+    }
+  }
+  function render(){ drawBoard(); drawPreview(nctx,pending); drawPreview(hctx,hold); }
+
+  /* ---------- 界面同步 ---------- */
+  function syncHud(){
+    scoreEl.textContent=score;
+    linesEl.textContent=lines;
+    bestEl.textContent=Math.max(best,score);
+    refreshSpeed();
+    if(!running){
+      if(over){
+        ovBig.textContent="GAME OVER";
+        ovSmall.innerHTML="得分 "+score+"　·　消除 "+lines+" 行<br>点击重新开始";
+      }else{
+        ovBig.textContent="TETRIS";
+        ovSmall.innerHTML="点击开始游戏";
+      }
+      overlay.classList.remove("hidden");
+    }else{
+      overlay.classList.add("hidden");
+    }
+  }
+
+  /* ---------- 触屏操作 ---------- */
+  function act(name){
+    if(name==="rotate"){ rotate(1); }
+    else if(name==="hold"){ holdPiece(); }
+    else if(name==="left"){ startDas(-1); }
+    else if(name==="right"){ startDas(1); }
+    else if(name==="soft"){ startSoft(); }
+    else if(name==="hard"){ hardDrop(); }
+    else if(name==="stopH"){ stopDas(); }
+    else if(name==="stopSoft"){ stopSoft(); }
+  }
+  function pressOnce(el, name){
+    el.addEventListener("pointerdown", function(e){ e.preventDefault(); act(name); });
+  }
+  function pressHold(el, startName, stopName){
+    el.addEventListener("pointerdown", function(e){
+      e.preventDefault();
+      if(el.setPointerCapture){ try{ el.setPointerCapture(e.pointerId); }catch(err){} }
+      act(startName);
+    });
+    el.addEventListener("pointerup", function(){ act(stopName); });
+    el.addEventListener("pointercancel", function(){ act(stopName); });
+  }
+  pressHold(document.querySelector(".dbtn.left"), "left", "stopH");
+  pressHold(document.querySelector(".dbtn.right"), "right", "stopH");
+  pressHold(document.querySelector(".dbtn.down"), "soft", "stopSoft");
+  pressOnce(document.querySelector(".dbtn.up"), "hard");
+  pressOnce(document.querySelector(".abtn.a"), "rotate");
+  pressOnce(document.querySelector(".abtn.b"), "hold");
+  pauseBtnTouch.addEventListener("pointerdown", function(e){ e.preventDefault(); togglePause(); });
+
+  /* ---------- 菜单 / 设置 ---------- */
+  overlay.addEventListener("click", function(){ if(!running||over) newGame(); });
+  resumeBtn.addEventListener("click", function(){ resume(); closePauseMenu(); });
+  settingsFromPauseBtn.addEventListener("click", function(){ closePauseMenu(); openSettings(); });
+  closeSettingsBtn.addEventListener("click", function(){ closeSettings(); });
+  settingsModal.addEventListener("click", function(e){ if(e.target===settingsModal) closeSettings(); });
+  musicVolEl.addEventListener("input", function(){ setMusicVolume(Number(this.value)/100); savePrefs(); });
+  sfxVolEl.addEventListener("input", function(){ setSfxVolume(Number(this.value)/100); savePrefs(); });
+
+  function loadPrefs(){
+    try{
+      var mv=parseFloat(localStorage.getItem("tetris_musicVol"));
+      if(!isNaN(mv)) musicVolume=Math.max(0,Math.min(1,mv));
+      var sv=parseFloat(localStorage.getItem("tetris_sfxVol"));
+      if(!isNaN(sv)) sfxVolume=Math.max(0,Math.min(1,sv));
+    }catch(e){}
+  }
+  function savePrefs(){
+    try{
+      localStorage.setItem("tetris_musicVol", String(musicVolume));
+      localStorage.setItem("tetris_sfxVol", String(sfxVolume));
+    }catch(e){}
+  }
+
+  document.addEventListener("keydown",onKeyDown);
+  document.addEventListener("keyup",onKeyUp);
+  window.addEventListener("blur",function(){ if(running&&!paused&&!over) pauseGame(); });
+  document.addEventListener("visibilitychange",function(){ if(document.hidden&&running&&!paused&&!over) pauseGame(); });
+
+  /* ---------- 初始化 ---------- */
+  resetBoard();
+  best=0;
+  try{ var saved=localStorage.getItem("tetris_best"); if(saved) best=parseInt(saved,10)||0; }catch(e){}
+  loadPrefs();
+  musicVolEl.value=String(Math.round(musicVolume*100));
+  sfxVolEl.value=String(Math.round(sfxVolume*100));
+  setMusicVolume(musicVolume);
+  setSfxVolume(sfxVolume);
+  syncHud();
+  render();
+})();
+</script>
+</body>
+</html>
